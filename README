@@ -1,0 +1,13 @@
+Vim clientserver protocol library
+
+supported:
+  serverlist()
+  remote_expr()
+
+not supported:
+  remote_foreground()
+  remote_peek()
+  remote_read()
+  remote_send()
+  server2client()
+

@@ -1,0 +1,10 @@
+LIBRARY VIMREMOTE.DLL
+EXPORTS
+  vimremote_alloc
+  vimremote_free
+  vimremote_init
+  vimremote_uninit
+  vimremote_serverlist
+  vimremote_remoteexpr
+  vimremote_register
+  vimremote_eventloop

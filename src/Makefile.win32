@@ -1,0 +1,22 @@
+
+CC=cl
+CFLAGS=
+LDFLAGS=/MD user32.lib gdi32.lib
+
+all: vimremote.exe vimremote.dll
+
+vimremote.exe: main.obj vimremote_win32.obj vimthings.obj
+	$(CC) /Fe$@ $(CFLAGS) $** $(LDFLAGS)
+
+vimremote.dll: vimremote_win32.obj vimthings.obj vimremote.def
+	$(CC) /LD /Fe$@ $(CFLAGS) $** $(LDFLAGS)
+
+.c.obj:
+	$(CC) /c $(CFLAGS) $<
+
+clean:
+	-del *.obj
+	-del *.exp
+	-del *.lib
+	-del vimremote.exe
+	-del vimremote.dll

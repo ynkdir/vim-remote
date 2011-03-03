@@ -1,0 +1,20 @@
+
+CC=cc
+CFLAGS=-W -Wall -fPIC
+LDFLAGS=-lX11
+
+all: vimremote vimremote.so
+
+vimremote: main.o vimremote_x11.o vimthings.o
+	$(CC) -o $@ $(CFLAGS) $^ $(LDFLAGS)
+
+vimremote.so: vimremote_x11.o vimthings.o
+	$(CC) -shared -o $@ $(CFLAGS) $^ $(LDFLAGS)
+
+.c.o:
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+clean:
+	-rm *.o
+	-rm vimremote
+	-rm vimremote.so
