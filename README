@@ -13,3 +13,42 @@ not supported:
   remote_send()
   server2client()
 
+
+Example:
+
+Compile vim-remote library.
+
+  Linux:
+    $ make -f Makefile.x11
+
+  Windows (VC++):
+    > nmake -f Makefile.msvc
+
+  Windows (MinGW):
+    > make -f Makefile.mingw
+
+Start the sample python server.
+
+  $ python main.py --servername py --server
+
+You can evaluate Python expression with remote_expr().
+Start Vim and execute the following command.
+
+  :echo remote_expr('py', 'print("This is Python expression")')
+  None
+
+"None" is result of Python expression.
+And the message will be displayed on the console.
+
+Also, it is possible to call client function from server.
+
+  :function! F()
+  :  echo "This is Vim expression"
+  :  return "And this is result from Vim"
+  :endfunction
+  :let pyexpr = printf('remote_expr("%s", "F()")', v:servername)
+  :let result = remote_expr('py', pyexpr)
+  This is Vim expression
+  :echo result
+  And this is result from Vim
+
