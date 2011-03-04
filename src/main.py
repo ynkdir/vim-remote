@@ -27,6 +27,19 @@ else:
         "vimremote.so"))
 
 
+def remote_expr(servername, expr):
+    result = c_char_p()
+    ng = vimremote.vimremote_remoteexpr(c_char_p(servername), c_char_p(expr),
+            byref(result))
+    s = result.value
+    if s is None:
+        s = ""
+    vimremote.vimremote_free(result)
+    if ng:
+        raise Exception("vimremote_remoteexpr() failed: " + s)
+    return s
+
+
 @CFUNCTYPE(c_int, c_char_p, POINTER(c_void_p))
 def feval(expr, result):
     try:
@@ -49,12 +62,7 @@ def command_serverlist():
 
 
 def command_remoteexpr(servername, expr):
-    result = c_char_p()
-    if vimremote.vimremote_remoteexpr(c_char_p(servername), c_char_p(expr),
-            byref(result)) != 0:
-        raise Exception("vimremote_remoteexpr() failed")
-    print result.value
-    vimremote.vimremote_free(result)
+    print remote_expr(servername, expr)
 
 
 def command_server(servername):

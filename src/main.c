@@ -46,7 +46,8 @@ command_remoteexpr(const char *servername, const char *expr)
     char *result;
 
     if (vimremote_remoteexpr(servername, expr, &result) != 0) {
-        fatal("vimremote_remoteexpr() failed");
+        fatal("vimremote_remoteexpr() failed: %s",
+                result == NULL ? "" : result);
     }
 
     printf("%s\n", result);
