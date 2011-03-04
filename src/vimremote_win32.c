@@ -1,4 +1,6 @@
 
+#include <stdio.h>
+
 #include <windows.h>
 
 #include "vimthings.h"
@@ -57,7 +59,7 @@ vimremote_uninit()
 int
 vimremote_serverlist(char **servernames)
 {
-    *servernames = serverGetVimNames();
+    *servernames = (char *)serverGetVimNames();
     return 0;
 }
 
@@ -224,7 +226,6 @@ Messaging_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	HWND		sender = (HWND)wParam;
 	COPYDATASTRUCT	reply;
 	char_u		*res;
-	char_u		winstr[30];
 	int		retval;
 	char_u		*str;
 	char_u		*tofree;
@@ -253,7 +254,7 @@ Messaging_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             else
             {
-                err = usereval(str, &res);
+                err = usereval((char *)str, (char **)&res);
             }
 
 	    vim_free(tofree);
@@ -262,7 +263,7 @@ Messaging_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		reply.dwData = COPYDATA_RESULT;
             else
 		reply.dwData = COPYDATA_ERROR_RESULT;
-	    reply.lpData = (res == NULL) ? "" : res;
+	    reply.lpData = (res == NULL) ? (char_u *)"" : res;
 	    reply.cbData = (res == NULL) ? 0 : (DWORD)STRLEN(res) + 1;
 
 	    serverSendEnc(sender);
@@ -386,8 +387,8 @@ enumWindowsGetNames(HWND hwnd, LPARAM lparam)
 	return TRUE;
 
     /* Add the name to the list */
-    ga_concat(ga, server);
-    ga_concat(ga, "\n");
+    ga_concat(ga, (char_u *)server);
+    ga_concat(ga, (char_u *)"\n");
     return TRUE;
 }
 
@@ -417,7 +418,7 @@ serverSetName(char_u *name)
     serverName = vim_strsave(name);
 
     /* Update the message window title */
-    SetWindowText(message_window, name);
+    SetWindowText(message_window, (char *)name);
 
     return TRUE;
 }
