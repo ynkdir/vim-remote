@@ -1,5 +1,7 @@
 Vim clientserver protocol library
 
+License: VIM LICENSE (see :help license)
+
 supported:
   serverlist()
   remote_expr()
