@@ -1,0 +1,20 @@
+
+CC=gcc
+CFLAGS=-W -Wall
+LDFLAGS=-luser32 -lgdi32
+
+all: vimremote.exe vimremote.dll
+
+vimremote.exe: main.o vimremote_win32.o vimthings.o
+	$(CC) -o $@ $(CFLAGS) $^ $(LDFLAGS)
+
+vimremote.dll: vimremote_win32.o vimthings.o
+	$(CC) -shared -o $@ $(CFLAGS) $^ $(LDFLAGS)
+
+.c.o:
+	$(CC) -c $(CFLAGS) $<
+
+clean:
+	-del *.o
+	-del vimremote.exe
+	-del vimremote.dll
