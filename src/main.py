@@ -1,3 +1,6 @@
+# encoding: utf-8
+
+from __future__ import print_function
 
 import sys
 import os
@@ -57,12 +60,12 @@ def command_serverlist():
     servernames = c_char_p()
     if vimremote.vimremote_serverlist(byref(servernames)) != 0:
         raise Exception("vimremote_serverlist() failed")
-    sys.stdout.write(servernames.value)
+    print(servernames.value, end='')
     vimremote.vimremote_free(servernames)
 
 
 def command_remoteexpr(servername, expr):
-    print remote_expr(servername, expr)
+    print(remote_expr(servername, expr))
 
 
 def command_server(servername):
