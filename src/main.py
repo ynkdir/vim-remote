@@ -86,11 +86,11 @@ def main():
         command_serverlist()
     elif args.remoteexpr is not None:
         if args.servername is None:
-            raise Exception("remoteexpr required servername")
+            raise Exception("remoteexpr requires servername")
         command_remoteexpr(args.servername, args.remoteexpr)
     elif args.server:
         if args.servername is None:
-            raise Exception("server required servername")
+            raise Exception("server requires servername")
         command_server(args.servername)
     else:
         argument_parser.print_help()
