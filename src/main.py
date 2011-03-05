@@ -10,6 +10,9 @@ from ctypes import CDLL, CFUNCTYPE, POINTER, byref, c_int, c_char_p, \
         c_void_p, memmove
 
 
+ENCODING = "utf-8"
+
+
 argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument("--serverlist", action="store_true",
         help="List available Vim server names")
@@ -32,8 +35,10 @@ else:
 
 def remote_expr(servername, expr):
     result = c_char_p()
-    ng = vimremote.vimremote_remoteexpr(c_char_p(servername), c_char_p(expr),
-            byref(result))
+    if sys.version_info[0] >= 3:
+        servername = servername.encode(ENCODING)
+        expr = expr.encode(ENCODING)
+    ng = vimremote.vimremote_remoteexpr(servername, expr, byref(result))
     s = result.value
     if s is None:
         s = ""
@@ -51,6 +56,8 @@ def feval(expr, result):
     except Exception as e:
         res = str(e)
         err = -1
+    if sys.version_info[0] >= 3:
+        res = res.encode(ENCODING)
     result[0] = vimremote.vimremote_malloc(len(res) + 1)
     memmove(result[0], c_char_p(res), len(res) + 1)
     return err
@@ -69,7 +76,9 @@ def command_remoteexpr(servername, expr):
 
 
 def command_server(servername):
-    if vimremote.vimremote_register(c_char_p(servername), feval) != 0:
+    if sys.version_info[0] >= 3:
+        servername = servername.encode(ENCODING)
+    if vimremote.vimremote_register(servername, feval) != 0:
         raise Exception("vimremote_register() failed")
     while True:
         vimremote.vimremote_eventloop(0)
