@@ -254,6 +254,7 @@ Messaging_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             else
             {
+                res = NULL;
                 err = usereval((char *)str, (char **)&res);
             }
 
@@ -264,7 +265,7 @@ Messaging_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             else
 		reply.dwData = COPYDATA_ERROR_RESULT;
 	    reply.lpData = (res == NULL) ? (char_u *)"" : res;
-	    reply.cbData = (res == NULL) ? 0 : (DWORD)STRLEN(res) + 1;
+	    reply.cbData = (res == NULL) ? 1 : (DWORD)STRLEN(res) + 1;
 
 	    serverSendEnc(sender);
 	    retval = (int)SendMessage(sender, WM_COPYDATA, (WPARAM)message_window,
