@@ -1,6 +1,6 @@
 LIBRARY VIMREMOTE.DLL
 EXPORTS
-  vimremote_alloc
+  vimremote_malloc
   vimremote_free
   vimremote_init
   vimremote_uninit

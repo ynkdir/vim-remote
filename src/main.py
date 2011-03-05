@@ -51,7 +51,7 @@ def feval(expr, result):
     except Exception as e:
         res = str(e)
         err = -1
-    result[0] = vimremote.vimremote_alloc(len(res) + 1)
+    result[0] = vimremote.vimremote_malloc(len(res) + 1)
     memmove(result[0], c_char_p(res), len(res) + 1)
     return err
 

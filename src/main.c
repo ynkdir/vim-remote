@@ -68,7 +68,7 @@ static int
 echoeval(const char *expr, char **result)
 {
     printf("%s\n", expr);
-    *result = vimremote_alloc(strlen(expr) + 1);
+    *result = vimremote_malloc(strlen(expr) + 1);
     strcpy(*result, expr);
     return 0;
 }

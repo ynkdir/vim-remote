@@ -5,7 +5,7 @@
 
 typedef int (*vimremote_eval_f) (const char *expr, char **result);
 
-void *vimremote_alloc(size_t len);
+void *vimremote_malloc(size_t len);
 void vimremote_free(void *p);
 int vimremote_init();
 int vimremote_uninit();

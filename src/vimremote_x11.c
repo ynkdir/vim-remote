@@ -57,7 +57,7 @@ static vimremote_eval_f usereval = NULL;
 static char_u *serverName = NULL;
 
 void *
-vimremote_alloc(size_t len)
+vimremote_malloc(size_t len)
 {
     return malloc(len);
 }

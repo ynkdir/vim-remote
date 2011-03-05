@@ -31,7 +31,7 @@ void serverProcessPendingMessages(void);
 static char_u * serverConvert(char_u *client_enc, char_u *data, char_u **tofree);
 
 void *
-vimremote_alloc(size_t len)
+vimremote_malloc(size_t len)
 {
     return malloc(len);
 }
