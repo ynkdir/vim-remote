@@ -379,7 +379,7 @@ DoRegisterName(Display *dpy, char_u *name)
 	status = XGetGeometry(dpy, w, &dummyWin, &dummyInt, &dummyInt,
 				  &dummyUns, &dummyUns, &dummyUns, &dummyUns);
 	(void)XSetErrorHandler(old_handler);
-	if (status != Success && w != commWindow)
+	if (WindowValid(dpy, w) && status != Success && w != commWindow)
 	{
 	    XUngrabServer(dpy);
 	    XFlush(dpy);
