@@ -13,8 +13,9 @@ public class Main {
             int invoke(String expr, Pointer result);
         }
 
+        // linux: without extension "libvimremote.so" is searched.
         CLibrary INSTANCE = (CLibrary)Native.loadLibrary(
-                "vimremote", CLibrary.class);
+                Platform.isWindows() ? "vimremote" : "vimremote.so", CLibrary.class);
         Pointer vimremote_malloc(long len);
         void vimremote_free(Pointer p);
         int vimremote_init();
