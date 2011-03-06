@@ -50,6 +50,7 @@ public class Main {
     public void command_server(String servername) {
         CLibrary.vimremote_eval_f usereval = new CLibrary.vimremote_eval_f() {
             public int invoke(String expr, Pointer result) {
+                System.out.println(expr);
                 // eval?
                 int ret = 0;
                 String res = expr;
