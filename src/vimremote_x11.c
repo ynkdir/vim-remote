@@ -388,8 +388,6 @@ DoRegisterName(Display *dpy, char_u *name)
 	}
 	(void)LookupName(dpy, name, /*delete=*/TRUE);
     }
-    /* FIXME: sizeof(Window) == 8 for 64bit system.
-     * Also other sscanf() call should be fixed. */
     sprintf((char *)propInfo, "%x %.*s", (int_u)commWindow,
 						       MAX_NAME_LENGTH, name);
     old_handler = XSetErrorHandler(x_error_check);
