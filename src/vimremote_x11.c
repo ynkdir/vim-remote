@@ -289,6 +289,7 @@ SendInit(Display *dpy)
 
     if (commWindow == None)
     {
+        /* FIXME: Why getpid() is used for x value. */
 	commWindow = XCreateSimpleWindow(dpy, XDefaultRootWindow(dpy),
 				getpid(), 0, 10, 10, 0,
 				WhitePixel(dpy, DefaultScreen(dpy)),
@@ -361,6 +362,8 @@ DoRegisterName(Display *dpy, char_u *name)
          * Cannot reproduce for now.
          *
          * WORKAROUND: use WindowValid().
+         *
+         * Probably EnumWindow() approach is better to use.
          */
 
 	/*
@@ -385,6 +388,8 @@ DoRegisterName(Display *dpy, char_u *name)
 	}
 	(void)LookupName(dpy, name, /*delete=*/TRUE);
     }
+    /* FIXME: sizeof(Window) == 8 for 64bit system.
+     * Also other sscanf() call should be fixed. */
     sprintf((char *)propInfo, "%x %.*s", (int_u)commWindow,
 						       MAX_NAME_LENGTH, name);
     old_handler = XSetErrorHandler(x_error_check);
