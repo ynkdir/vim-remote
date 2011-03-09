@@ -43,6 +43,7 @@ static void serverEventProc(Display *dpy, XEvent *eventPtr);
 static int WaitForPend(void *p);
 static int WindowValid(Display *dpy, Window w);
 static void ServerWait(Display *dpy, Window w, EndCond endCond, void *endData, int seconds);
+static char_u *serverGetVimNames(Display *dpy);
 static int AppendPropCarefully(Display *display, Window window, Atom property, char_u *value, int length);
 static int x_error_check(Display *dpy, XErrorEvent *error_event);
 static char_u * serverConvert(char_u *client_enc, char_u *data, char_u **tofree);
@@ -55,6 +56,8 @@ static Atom registryProperty = None;
 static int got_x_error = False;
 static vimremote_eval_f usereval = NULL;
 static char_u *serverName = NULL;
+
+static char_u	*empty_prop = (char_u *)"";	/* empty GetRegProp() result */
 
 void *
 vimremote_malloc(size_t len)
@@ -109,45 +112,14 @@ vimremote_uninit()
 int
 vimremote_serverlist(char **servernames)
 {
-    long_u nitems;
-    char *prop;
-    char *p;
-    int windowid;
-    char name[256];
-    int n;
-    garray_T ga;
+    char_u *p;
 
-    if (!GetRegProp(display, (char_u **)&prop, &nitems)) {
+    p = serverGetVimNames(display);
+    if (p == NULL) {
         return -1;
     }
 
-    if (prop == NULL) {
-        *servernames = strdup("");
-        return 0;
-    }
-
-    ga_init2(&ga, 1, 100);
-
-    for (p = prop; *p != '\0'; ++p) {
-        n = sscanf(p, "%x %s", &windowid, name);
-        if (n != 2) {
-            /* parse error */
-            XFree(prop);
-            return -1;
-        }
-        if (WindowValid(display, (Window)windowid)) {
-            ga_concat(&ga, (char_u *)name);
-            ga_concat(&ga, (char_u *)"\n");
-        }
-        p += strlen(p);
-    }
-
-    ga_append(&ga, NUL);
-
-    XFree(prop);
-
-    *servernames = ga.ga_data;
-
+    *servernames = (char *)p;
     return 0;
 }
 
@@ -247,12 +219,8 @@ LookupName(Display *dpy, char_u *name, int delete)
     /*
      * Read the registry property.
      */
-    if (!GetRegProp(dpy, &regProp, &numItems))
+    if (GetRegProp(dpy, &regProp, &numItems) == FAIL)
 	return 0;
-
-    if (regProp == NULL) {
-        return None;
-    }
 
     /*
      * Scan the property for the desired name.
@@ -295,8 +263,8 @@ LookupName(Display *dpy, char_u *name, int delete)
 	XSync(dpy, False);
     }
 
-    XFree(regProp);
-
+    if (regProp != empty_prop)
+	XFree(regProp);
     return (Window)returnValue;
 }
 
@@ -368,6 +336,33 @@ DoRegisterName(Display *dpy, char_u *name)
 	unsigned int	dummyUns;
 	Window		dummyWin;
 
+        /*
+         * FIXME:
+         * $ ./vimremote --servername xxx --server
+         * (CTRL-C to stop)
+         * $ gvim
+         * $ ./vimremote --servername xxx --server
+         * vimremote_register() failed
+         *
+         * In gvim process windowid of xxx is re-used for non-commWindow.
+         *
+         * With debug code:
+         *   $ ./vimremote --servername xxx --server
+         *   (CTRL-C to stop)
+         *   $ ./vimremote --serverlist
+         *   GetRegProp() does not contain xxx entry.
+         *
+         *   $ ./vimremote --servername xxx --server
+         *   (CTRL-C to stop)
+         *   $ vim --serverlist
+         *   GetRegProp() contains xxx entry.
+         *
+         * This is potentially applied to Vim.
+         * Cannot reproduce for now.
+         *
+         * WORKAROUND: use WindowValid().
+         */
+
 	/*
 	 * The name is currently registered.  See if the commWindow
 	 * associated with the name exists.  If not, or if the commWindow
@@ -379,7 +374,10 @@ DoRegisterName(Display *dpy, char_u *name)
 	status = XGetGeometry(dpy, w, &dummyWin, &dummyInt, &dummyInt,
 				  &dummyUns, &dummyUns, &dummyUns, &dummyUns);
 	(void)XSetErrorHandler(old_handler);
-	if (WindowValid(dpy, w) && status != Success && w != commWindow)
+        /* Status type is similar to Bool (0 = FAILED, !0 = SUCCEEDED)
+         * Success == 0 but status == 0 means it failed.
+	if (status != Success && w != commWindow) */
+	if (status && w != commWindow && WindowValid(dpy, w))
 	{
 	    XUngrabServer(dpy);
 	    XFlush(dpy);
@@ -496,11 +494,8 @@ DeleteAnyLingerer(Display *dpy, Window win)
     /*
      * Read the registry property.
      */
-    if (!GetRegProp(dpy, &regProp, &numItems))
+    if (GetRegProp(dpy, &regProp, &numItems) == FAIL)
 	return;
-
-    if (regProp == NULL)
-        return;
 
     /* Scan the property for the window id.  */
     for (p = regProp; (long_u)(p - regProp) < numItems; )
@@ -538,53 +533,50 @@ DeleteAnyLingerer(Display *dpy, Window win)
 	XSync(dpy, False);
     }
 
-    XFree(regProp);
+    if (regProp != empty_prop)
+	XFree(regProp);
 }
 
 static int
 GetRegProp(Display *dpy, char_u **regPropp, long_u *numItemsp)
 {
-    int result;
-    Atom actual_type;
-    int actual_format;
-    unsigned long nitems;
-    unsigned long bytes_after;
-    unsigned char *prop;
+    int		result, actualFormat;
+    long_u	bytesAfter;
+    Atom	actualType;
     XErrorHandler old_handler;
 
-    got_x_error = False;
+    *regPropp = NULL;
     old_handler = XSetErrorHandler(x_error_check);
-    result = XGetWindowProperty(dpy, RootWindow(dpy, 0), registryProperty,
-            0L, (long)MAX_PROP_WORDS, False,
-            XA_STRING, &actual_type, &actual_format,
-            &nitems, &bytes_after, &prop);
-    XSync(dpy, False);
-    XSetErrorHandler(old_handler);
+    got_x_error = FALSE;
 
-    if (got_x_error) {
-        return False;
-    }
+    result = XGetWindowProperty(dpy, RootWindow(dpy, 0), registryProperty, 0L,
+				(long)MAX_PROP_WORDS, False,
+				XA_STRING, &actualType,
+				&actualFormat, numItemsp, &bytesAfter,
+				regPropp);
 
-    if (actual_type == None) {
-        /* No prop yet. Logically equal to the empty list */
-        *numItemsp = 0;
-        *regPropp = NULL;
-        return True;
+    XSync(dpy, FALSE);
+    (void)XSetErrorHandler(old_handler);
+    if (got_x_error)
+	return FAIL;
+
+    if (actualType == None)
+    {
+	/* No prop yet. Logically equal to the empty list */
+	*numItemsp = 0;
+	*regPropp = empty_prop;
+	return OK;
     }
 
     /* If the property is improperly formed, then delete it. */
-    if (result != Success || actual_format != 8 || actual_type != XA_STRING) {
-        if (prop != NULL) {
-            XFree(prop);
-        }
-        XDeleteProperty(dpy, RootWindow(dpy, 0), registryProperty);
-        return False;
+    if (result != Success || actualFormat != 8 || actualType != XA_STRING)
+    {
+	if (*regPropp != NULL)
+	    XFree(*regPropp);
+	XDeleteProperty(dpy, RootWindow(dpy, 0), registryProperty);
+	return FAIL;
     }
-
-    *numItemsp = nitems;
-    *regPropp = prop;
-
-    return True;
+    return OK;
 }
 
 void
@@ -943,6 +935,63 @@ ServerWait(Display *dpy, Window w, EndCond endCond, void *endData, int seconds)
         }
         usleep(SEND_MSEC_POLL);
     }
+}
+
+/*
+ * Fetch a list of all the Vim instance names currently registered for the
+ * display.
+ *
+ * Returns a newline separated list in allocated memory or NULL.
+ */
+static char_u *
+serverGetVimNames(Display *dpy)
+{
+    char_u	*regProp;
+    char_u	*entry;
+    char_u	*p;
+    long_u	numItems;
+    int_u	w;
+    garray_T	ga;
+
+    if (registryProperty == None)
+    {
+	if (SendInit(dpy) < 0)
+	    return NULL;
+    }
+    ga_init2(&ga, 1, 100);
+
+    /*
+     * Read the registry property.
+     */
+    if (GetRegProp(dpy, &regProp, &numItems) == FAIL)
+	return NULL;
+
+    /*
+     * Scan all of the names out of the property.
+     */
+    ga_init2(&ga, 1, 100);
+    for (p = regProp; (long_u)(p - regProp) < numItems; p++)
+    {
+	entry = p;
+	while (*p != 0 && !isspace(*p))
+	    p++;
+	if (*p != 0)
+	{
+	    w = None;
+	    sscanf((char *)entry, "%x", &w);
+	    if (WindowValid(dpy, (Window)w))
+	    {
+		ga_concat(&ga, p + 1);
+		ga_concat(&ga, (char_u *)"\n");
+	    }
+	    while (*p != 0)
+		p++;
+	}
+    }
+    if (regProp != empty_prop)
+	XFree(regProp);
+    ga_append(&ga, NUL);
+    return ga.ga_data;
 }
 
 static int
