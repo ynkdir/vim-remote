@@ -16,6 +16,7 @@ module VimRemote
   extern "int vimremote_init()"
   extern "int vimremote_uninit()"
   extern "int vimremote_serverlist(char**)"
+  extern "int vimremote_remotesend(const char*, const char*)"
   extern "int vimremote_remoteexpr(const char*, const char*, char**)"
   extern "int vimremote_register(const char*, void*)"
   extern "int vimremote_eventloop(int)"
@@ -45,6 +46,12 @@ def command_serverlist()
     raise "vimremote_serverlist() failed"
   end
   print servernames.to_s
+end
+
+def command_remotesend(servername, keys)
+  if VimRemote.vimremote_remotesend(servername, keys) != 0
+    raise "vimremote_remotesend() failed"
+  end
 end
 
 def command_remoteexpr(servername, expr)
@@ -99,6 +106,7 @@ def main()
   opt = OptionParser.new
   opt.on('--serverlist') {|v| opts[:serverlist] = v }
   opt.on('--servername NAME') {|v| opts[:servername] = v }
+  opt.on('--remote-send KEYS') {|v| opts[:remotesend] = v }
   opt.on('--remote-expr EXPR') {|v| opts[:remoteexpr] = v }
   opt.on('--server') {|v| opts[:server] = v}
 
@@ -106,6 +114,11 @@ def main()
 
   if opts[:serverlist]
     command_serverlist()
+  elsif opts[:remotesend]
+    if !opts[:servername]
+      raise "remotesend requires servername"
+    end
+    command_remotesend(opts[:servername], opts[:remotesend])
   elsif opts[:remoteexpr]
     if !opts[:servername]
       raise "remoteexpr requires servername"

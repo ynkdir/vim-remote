@@ -24,7 +24,7 @@ static HWND findServer(char_u *name);
 int serverSetName(char_u *name);
 char_u *serverGetVimNames(void);
 int serverSendReply(char_u *name, char_u *reply);
-int serverSendToVim(char_u *name, char_u *cmd, char_u **result);
+int serverSendToVim(char_u *name, char_u *cmd, char_u **result, int asExpr);
 static int save_reply(HWND server, char_u *reply, int expr);
 char_u *serverGetReply(HWND server, int *expr_res, int remove, int wait);
 void serverProcessPendingMessages(void);
@@ -64,9 +64,15 @@ vimremote_serverlist(char **servernames)
 }
 
 int
+vimremote_remotesend(const char *servername, const char *expr)
+{
+    return serverSendToVim((char_u *)servername, (char_u *)expr, NULL, FALSE);
+}
+
+int
 vimremote_remoteexpr(const char *servername, const char *expr, char **result)
 {
-    return serverSendToVim((char_u *)servername, (char_u *)expr, (char_u **)result);
+    return serverSendToVim((char_u *)servername, (char_u *)expr, (char_u **)result, TRUE);
 }
 
 int
@@ -471,10 +477,11 @@ serverSendReply(name, reply)
 }
 
     int
-serverSendToVim(name, cmd, result)
+serverSendToVim(name, cmd, result, asExpr)
     char_u	 *name;			/* Where to send. */
     char_u	 *cmd;			/* What to send. */
     char_u	 **result;		/* Result of eval'ed expression */
+    int		 asExpr;		/* Expression or keys? */
 {
     HWND	target;
     COPYDATASTRUCT data;
@@ -488,7 +495,7 @@ serverSendToVim(name, cmd, result)
 	return -1;
     }
 
-    data.dwData = COPYDATA_EXPR;
+    data.dwData = asExpr ? COPYDATA_EXPR : COPYDATA_KEYS;
     data.cbData = (DWORD)STRLEN(cmd) + 1;
     data.lpData = cmd;
 
@@ -497,7 +504,8 @@ serverSendToVim(name, cmd, result)
 							(LPARAM)(&data)) == 0)
 	return -1;
 
-    retval = serverGetReply(target, &retcode, TRUE, TRUE);
+    if (asExpr)
+	retval = serverGetReply(target, &retcode, TRUE, TRUE);
 
     if (result == NULL)
 	vim_free(retval);

@@ -30,6 +30,9 @@ class Application {
   public static unsafe extern int vimremote_serverlist(byte** servernames);
 
   [DllImport(vimremote)]
+  public static unsafe extern int vimremote_remotesend(string servername, string expr);
+
+  [DllImport(vimremote)]
   public static unsafe extern int vimremote_remoteexpr(string servername, string expr, byte** result);
 
   [DllImport(vimremote)]
@@ -68,6 +71,12 @@ class Application {
     System.Console.Write(servernames);
   }
 
+  public unsafe void command_remotesend(string servername, string keys) {
+    if (vimremote_remotesend(servername, keys) != 0) {
+      throw new Exception("vimremote_remotesend() failed");
+    }
+  }
+
   public unsafe void command_remoteexpr(string servername, string expr) {
     byte* p = null;
     if (vimremote_remoteexpr(servername, expr, &p) != 0) {
@@ -99,6 +108,7 @@ class Application {
     System.Console.WriteLine("  -h or --help          display help");
     System.Console.WriteLine("  --serverlist          List available Vim server names");
     System.Console.WriteLine("  --servername <name>   Vim server name");
+    System.Console.WriteLine("  --remote-send <keys>  Send <keys> to a Vim server and exit");
     System.Console.WriteLine("  --remote-expr <expr>  Evaluate <expr> in a Vim server");
     System.Console.WriteLine("  --server              Start server");
     Environment.Exit(0);
@@ -107,6 +117,7 @@ class Application {
   public void run(string[] args) {
     bool serverlist = false;
     string servername = null;
+    string remotesend = null;
     string remoteexpr = null;
     bool server = false;
 
@@ -119,6 +130,8 @@ class Application {
         serverlist = true;
       } else if (args[i] == "--servername") {
         servername = args[++i];
+      } else if (args[i] == "--remote-send") {
+        remotesend = args[++i];
       } else if (args[i] == "--remote-expr") {
         remoteexpr = args[++i];
       } else if (args[i] == "--server") {
@@ -134,6 +147,11 @@ class Application {
 
     if (serverlist) {
       command_serverlist();
+    } else if (remotesend != null) {
+      if (servername == null) {
+        throw new Exception("remotesend requires servername");
+      }
+      command_remotesend(servername, remotesend);
     } else if (remoteexpr != null) {
       if (servername == null) {
         throw new Exception("remoteexpr requires servername");

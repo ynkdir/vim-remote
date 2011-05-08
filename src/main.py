@@ -18,6 +18,8 @@ argument_parser.add_argument("--serverlist", action="store_true",
         help="List available Vim server names")
 argument_parser.add_argument("--servername",
         help="Vim server name")
+argument_parser.add_argument("--remote-send", dest="remotesend",
+        help="Send <keys> to a Vim server and exit")
 argument_parser.add_argument("--remote-expr", dest="remoteexpr",
         help="Evaluate <expr> in a Vim server")
 argument_parser.add_argument("--server", action="store_true",
@@ -71,6 +73,11 @@ def command_serverlist():
     vimremote.vimremote_free(servernames)
 
 
+def command_remotesend(servername, keys):
+    if vimremote.vimremote_remotesend(servername, keys) != 0:
+        raise Exception("vimremote_remotesend() failed")
+
+
 def command_remoteexpr(servername, expr):
     print(remote_expr(servername, expr))
 
@@ -93,6 +100,10 @@ def main():
 
     if args.serverlist:
         command_serverlist()
+    elif args.remotesend is not None:
+        if args.servername is None:
+            raise Exception("remotesend requires servername")
+        command_remotesend(args.servername, args.remotesend)
     elif args.remoteexpr is not None:
         if args.servername is None:
             raise Exception("remoteexpr requires servername")

@@ -21,6 +21,7 @@ public class Main {
         int vimremote_init();
         int vimremote_uninit();
         int vimremote_serverlist(Pointer[] servernames);
+        int vimremote_remotesend(String servername, String keys);
         int vimremote_remoteexpr(String servername, String expr, Pointer[] result);
         int vimremote_register(String servername, vimremote_eval_f eval);
         int vimremote_eventloop(int forever);
@@ -34,6 +35,12 @@ public class Main {
         String servernames = p[0].getString(0);
         System.out.print(servernames);
         CLibrary.INSTANCE.vimremote_free(p[0]);
+    }
+
+    public void command_remotesend(String servername, String keys) {
+        if (CLibrary.INSTANCE.vimremote_remotesend(servername, keys) != 0) {
+            throw new RuntimeException("vimremote_remotesend() failed");
+        }
     }
 
     public void command_remoteexpr(String servername, String expr) {
@@ -74,6 +81,7 @@ public class Main {
         System.out.println("  -h or --help          display help");
         System.out.println("  --serverlist          List available Vim server names");
         System.out.println("  --servername <name>   Vim server name");
+        System.out.println("  --remote-send <keys>  Send <keys> to a Vim server and exit");
         System.out.println("  --remote-expr <expr>  Evaluate <expr> in a Vim server");
         System.out.println("  --server              Start server");
         System.exit(0);
@@ -81,8 +89,9 @@ public class Main {
 
     public void run(String[] args) {
         boolean serverlist = false;
-        String servername = "";
-        String remoteexpr = "";
+        String servername = null;
+        String remotesend = null;
+        String remoteexpr = null;
         boolean server = false;
 
         if (args.length == 0) {
@@ -94,6 +103,8 @@ public class Main {
                 serverlist = true;
             } else if (args[i].equals("--servername")) {
                 servername = args[++i];
+            } else if (args[i].equals("--remote-send")) {
+                remotesend = args[++i];
             } else if (args[i].equals("--remote-expr")) {
                 remoteexpr = args[++i];
             } else if (args[i].equals("--server")) {
@@ -109,13 +120,18 @@ public class Main {
 
         if (serverlist) {
             command_serverlist();
-        } else if (!remoteexpr.equals("")) {
-            if (servername.equals("")) {
+        } else if (remotesend != null) {
+            if (servername == null) {
+                throw new RuntimeException("remotesend requires servername");
+            }
+            command_remotesend(servername, remotesend);
+        } else if (remoteexpr != null) {
+            if (servername == null) {
                 throw new RuntimeException("remoteexpr requires servername");
             }
             command_remoteexpr(servername, remoteexpr);
         } else if (server) {
-            if (servername.equals("")) {
+            if (servername == null) {
                 throw new RuntimeException("server requires servername");
             }
             command_server(servername);

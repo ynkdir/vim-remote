@@ -8,6 +8,7 @@
 
 static void fatal(const char *format, ...);
 static void command_serverlist();
+static void command_remotesend(const char *servername, const char *keys);
 static void command_remoteexpr(const char *servername, const char *expr);
 static void command_server(const char *servername);
 static int echoeval(const char *expr, char **result);
@@ -38,6 +39,14 @@ command_serverlist()
     printf("%s", servernames);
 
     vimremote_free(servernames);
+}
+
+static void
+command_remotesend(const char *servername, const char *keys)
+{
+    if (vimremote_remotesend(servername, keys) != 0) {
+        fatal("vimremote_remotesend() failed");
+    }
 }
 
 static void
@@ -80,7 +89,8 @@ usage()
     printf("  -h or --help          display help\n");
     printf("  --serverlist          List available Vim server names\n");
     printf("  --servername <name>   Vim server name\n");
-    printf("  --remote-expr <expr>  Evaluate <expr> in a Vim server\n");
+    printf("  --remote-send <keys>  Send <keys> to a Vim server and exit\n");
+    printf("  --remote-expr <expr>  Evaluate <expr> in a Vim server and print result\n");
     printf("  --server              Start server\n");
 }
 
@@ -88,6 +98,7 @@ int
 main(int argc, char **argv)
 {
     const char *servername = NULL;
+    const char *remotesend = NULL;
     const char *remoteexpr = NULL;
     int help = 0;
     int serverlist = 0;
@@ -110,6 +121,8 @@ main(int argc, char **argv)
             serverlist = 1;
         } else if (strcmp(argv[i], "--servername") == 0) {
             servername = argv[++i];
+        } else if (strcmp(argv[i], "--remote-send") == 0) {
+            remotesend = argv[++i];
         } else if (strcmp(argv[i], "--remote-expr") == 0) {
             remoteexpr = argv[++i];
         } else if (strcmp(argv[i], "--server") == 0) {
@@ -123,6 +136,11 @@ main(int argc, char **argv)
         usage();
     } else if (serverlist) {
         command_serverlist();
+    } else if (remotesend != NULL) {
+        if (servername == NULL) {
+            fatal("remotesend requires servername");
+        }
+        command_remotesend(servername, remotesend);
     } else if (remoteexpr != NULL) {
         if (servername == NULL) {
             fatal("remoteexpr requires servername");

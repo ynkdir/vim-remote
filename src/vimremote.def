@@ -5,6 +5,7 @@ EXPORTS
   vimremote_init
   vimremote_uninit
   vimremote_serverlist
+  vimremote_remotesend
   vimremote_remoteexpr
   vimremote_register
   vimremote_eventloop

@@ -36,7 +36,7 @@ typedef int (*EndCond) (void *);
 static Window LookupName(Display *dpy, char_u *name, int delete);
 static int SendInit(Display *dpy);
 static int DoRegisterName(Display *dpy, char_u *name);
-static int serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result);
+static int serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result, Bool asExpr);
 static void DeleteAnyLingerer(Display *dpy, Window w);
 static int GetRegProp(Display *dpy, char_u **regPropp, long_u *numItemsp);
 static void serverEventProc(Display *dpy, XEvent *eventPtr);
@@ -124,9 +124,15 @@ vimremote_serverlist(char **servernames)
 }
 
 int
+vimremote_remotesend(const char *servername, const char *keys)
+{
+    return serverSendToVim(display, (char_u *)servername, (char_u *)keys, NULL, FALSE);
+}
+
+int
 vimremote_remoteexpr(const char *servername, const char *expr, char **result)
 {
-    return serverSendToVim(display, (char_u *)servername, (char_u *)expr, (char_u **)result);
+    return serverSendToVim(display, (char_u *)servername, (char_u *)expr, (char_u **)result, TRUE);
 }
 
 int
@@ -407,7 +413,7 @@ DoRegisterName(Display *dpy, char_u *name)
 }
 
 static int
-serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result)
+serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result, Bool asExpr)
 {
     Window	    w;
     char_u	    *property;
@@ -432,7 +438,7 @@ serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result)
     property = (char_u *)malloc((unsigned)length + 30);
 
     sprintf((char *)property, "%c%c%c-n %s%c-E %s%c-s %s",
-		      0, 'c', 0, name, 0, p_enc, 0, cmd);
+		      0, asExpr ? 'c' : 'k', 0, name, 0, p_enc, 0, cmd);
     /* Add a back reference to our comm window */
     serial++;
     sprintf((char *)property + length, "%c-r %x %d",
@@ -446,6 +452,9 @@ serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result)
     {
 	return -1;
     }
+
+    if (!asExpr) /* There is no answer for this - Keys are sent async */
+	return 0;
 
     /*
      * Register the fact that we're waiting for a command to

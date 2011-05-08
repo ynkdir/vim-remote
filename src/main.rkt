@@ -27,6 +27,9 @@
 (define vimremote-serverlist
   (get-ffi-obj "vimremote_serverlist" vimremote (_fun _pointer -> _int)))
 
+(define vimremote-remotesend
+  (get-ffi-obj "vimremote_remotesend" vimremote (_fun _string/utf-8 _string/utf-8 -> _int)))
+
 (define vimremote-remoteexpr
   (get-ffi-obj "vimremote_remoteexpr" vimremote (_fun _string/utf-8 _string/utf-8 _pointer -> _int)))
 
@@ -45,6 +48,11 @@
   (vimremote-free (ptr-ref p _pointer))
   ; cause crasn. not needed?
   ;(free p)
+  )
+
+(define (command-remotesend servername keys)
+  (unless (equal? (vimremote-remotesend servername keys) 0)
+    (raise "vimremote_remotesend() failed"))
   )
 
 (define (command-remoteexpr servername expr)
@@ -94,6 +102,7 @@
   (display "  -h or --help          display help\n");
   (display "  --serverlist          List available Vim server names\n");
   (display "  --servername <name>   Vim server name\n");
+  (display "  --remote-send <keys>  Send <keys> to a Vim server and exit\n");
   (display "  --remote-expr <expr>  Evaluate <expr> in a Vim server\n");
   (display "  --server              Start server\n");
   (exit)
@@ -103,6 +112,7 @@
   (define args (command-line))
   (define serverlist #f)
   (define servername #f)
+  (define remotesend #f)
   (define remoteexpr #f)
   (define server #f)
 
@@ -116,6 +126,9 @@
              (loop (+ i 1)))
             ((equal? (list-ref args i) "--servername")
              (set! servername (list-ref args (+ i 1)))
+             (loop (+ i 2)))
+            ((equal? (list-ref args i) "--remote-send")
+             (set! remotesend (list-ref args (+ i 1)))
              (loop (+ i 2)))
             ((equal? (list-ref args i) "--remote-expr")
              (set! remoteexpr (list-ref args (+ i 1)))
@@ -131,6 +144,10 @@
 
   (cond (serverlist
          (command-serverlist))
+        (remotesend
+         (unless servername
+           (raise "remotesend requires servername"))
+         (command-remotesend servername remotesend))
         (remoteexpr
          (unless servername
            (raise "remoteexpr requires servername"))

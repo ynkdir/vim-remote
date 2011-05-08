@@ -40,6 +40,17 @@ func command_serverlist() {
   print(C.GoString(p[0]))
 }
 
+func command_remotesend(servername string, keys string) {
+  a := C.CString(servername)
+  defer C.free(unsafe.Pointer(a))
+  b := C.CString(keys)
+  defer C.free(unsafe.Pointer(b))
+  ng := C.vimremote_remotesend(a, b)
+  if ng != 0 {
+    panic("vimremote_remotesend() failed")
+  }
+}
+
 func command_remoteexpr(servername string, expr string) {
   println(remote_expr(servername, expr))
 }
@@ -136,6 +147,7 @@ func GoEval2(expr *C.char, result **C.char) (int) {
 func main() {
   serverlist := flag.Bool("serverlist", false, "List available Vim server names")
   servername := flag.String("servername", "", "Vim server name")
+  remotesend := flag.String("remote-send", "", "Send <keys> to a Vim server and exit")
   remoteexpr := flag.String("remote-expr", "", "Evaluate <expr> in a Vim server")
   server := flag.Bool("server", false, "Start server")
   flag.Parse()
@@ -146,6 +158,11 @@ func main() {
 
   if *serverlist {
     command_serverlist()
+  } else if *remotesend != "" {
+    if *servername == "" {
+      panic("remotesend requires servername")
+    }
+    command_remotesend(*servername, *remotesend)
   } else if *remoteexpr != "" {
     if *servername == "" {
       panic("remoteexpr requires servername")
