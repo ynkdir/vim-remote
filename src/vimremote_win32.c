@@ -10,7 +10,8 @@
 /* Use invalid encoding name to prevent conversion.
  * In Vim, conversion will fail and received data will be used as is. */
 static char_u p_enc[] = "RAWDATA";
-static vimremote_eval_f usereval = NULL;
+static vimremote_send_f callback_send = NULL;
+static vimremote_expr_f callback_expr = NULL;
 static char_u *serverName = NULL;
 
 static void serverSendEnc(HWND target);
@@ -76,11 +77,12 @@ vimremote_remoteexpr(const char *servername, const char *expr, char **result)
 }
 
 int
-vimremote_register(const char *servername, vimremote_eval_f eval)
+vimremote_register(const char *servername, vimremote_send_f send_f, vimremote_expr_f expr_f)
 {
     if (!serverSetName((char_u *)servername))
         return -1;
-    usereval = eval;
+    callback_send = send_f;
+    callback_expr = expr_f;
     return 0;
 }
 
@@ -241,34 +243,49 @@ Messaging_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case COPYDATA_ENCODING:
 	    /* Remember the encoding that the client uses. */
 	    vim_free(client_enc);
-            // TODO:
+	    // TODO:
 	    //client_enc = enc_canonize((char_u *)data->lpData);
 	    client_enc = vim_strsave(data->lpData);
 	    return 1;
 
 	case COPYDATA_KEYS:
-            /* not supported */
-	    return 1;
+	    /* Add the received keys to the input buffer.  The loop waiting
+	     * for the user to do something should check the input buffer. */
+	    str = serverConvert(client_enc, (char_u *)data->lpData, &tofree);
+
+	    if (callback_send == NULL)
+	    {
+		err = -1;
+		res = NULL;
+	    }
+	    else
+	    {
+		res = NULL;
+		err = callback_send((char *)str);
+	    }
+
+	    vim_free(tofree);
+	    return err ? 0 : 1;
 
 	case COPYDATA_EXPR:
 	    str = serverConvert(client_enc, (char_u *)data->lpData, &tofree);
 
-            if (usereval == NULL)
-            {
-                err = -1;
-                res = NULL;
-            }
-            else
-            {
-                res = NULL;
-                err = usereval((char *)str, (char **)&res);
-            }
+	    if (callback_expr == NULL)
+	    {
+		err = -1;
+		res = NULL;
+	    }
+	    else
+	    {
+		res = NULL;
+		err = callback_expr((char *)str, (char **)&res);
+	    }
 
 	    vim_free(tofree);
 
-            if (!err)
+	    if (!err)
 		reply.dwData = COPYDATA_RESULT;
-            else
+	    else
 		reply.dwData = COPYDATA_ERROR_RESULT;
 	    reply.lpData = (res == NULL) ? (char_u *)"" : res;
 	    reply.cbData = (res == NULL) ? 1 : (DWORD)STRLEN(res) + 1;

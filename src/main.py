@@ -50,6 +50,12 @@ def remote_expr(servername, expr):
     return s
 
 
+@CFUNCTYPE(c_int, c_char_p)
+def fsend(keys):
+    print(keys)
+    return 0
+
+
 @CFUNCTYPE(c_int, c_char_p, POINTER(c_void_p))
 def feval(expr, result):
     try:
@@ -85,7 +91,7 @@ def command_remoteexpr(servername, expr):
 def command_server(servername):
     if sys.version_info[0] >= 3:
         servername = servername.encode(ENCODING)
-    if vimremote.vimremote_register(servername, feval) != 0:
+    if vimremote.vimremote_register(servername, fsend, feval) != 0:
         raise Exception("vimremote_register() failed")
     while True:
         vimremote.vimremote_eventloop(0)

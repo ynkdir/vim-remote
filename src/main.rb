@@ -18,7 +18,7 @@ module VimRemote
   extern "int vimremote_serverlist(char**)"
   extern "int vimremote_remotesend(const char*, const char*)"
   extern "int vimremote_remoteexpr(const char*, const char*, char**)"
-  extern "int vimremote_register(const char*, void*)"
+  extern "int vimremote_register(const char*, void*, void*)"
   extern "int vimremote_eventloop(int)"
 end
 
@@ -60,6 +60,10 @@ end
 
 def command_server(servername)
   if RUBY_VERSION >= '1.9.0'
+    fsend = VimRemote.bind('int send(char*)') {|keys|
+      puts keys
+      0
+    }
     feval = VimRemote.bind('int eval(char*, char**)') {|expr, result|
       begin
         res = eval(expr.to_s).to_s
@@ -74,6 +78,10 @@ def command_server(servername)
       err
     }
   else
+    fsend = DL.callback('IS') {|keys|
+      puts keys
+      0
+    }
     feval = DL.callback('ISP') {|expr, result|
       begin
         res = eval(expr).to_s
@@ -88,7 +96,7 @@ def command_server(servername)
       err
     }
   end
-  if VimRemote.vimremote_register(servername, feval) != 0
+  if VimRemote.vimremote_register(servername, fsend, feval) != 0
     raise "vimremote_register() failed"
   end
   while true

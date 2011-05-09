@@ -11,6 +11,7 @@ static void command_serverlist();
 static void command_remotesend(const char *servername, const char *keys);
 static void command_remoteexpr(const char *servername, const char *expr);
 static void command_server(const char *servername);
+static int echosend(const char *keys);
 static int echoeval(const char *expr, char **result);
 static void usage();
 
@@ -67,10 +68,17 @@ command_remoteexpr(const char *servername, const char *expr)
 static void
 command_server(const char *servername)
 {
-    if (vimremote_register(servername, echoeval) != 0) {
+    if (vimremote_register(servername, echosend, echoeval) != 0) {
         fatal("vimremote_register() failed");
     }
     vimremote_eventloop(1);
+}
+
+static int
+echosend(const char *keys)
+{
+    printf("%s\n", keys);
+    return 0;
 }
 
 static int

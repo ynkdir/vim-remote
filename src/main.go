@@ -98,6 +98,13 @@ func (v *funcV) Assign(t *eval.Thread, o eval.Value) { v.target = o.(eval.FuncVa
 func (v *funcV) Get(*eval.Thread) eval.Func { return v.target }
 func (v *funcV) Set(t *eval.Thread, x eval.Func) { v.target = x }
 
+//export GoSend
+func GoSend(keys *C.char) (int) {
+  s := C.GoString(keys)
+  println(s);
+  return 0;
+}
+
 //export GoEval
 func GoEval(expr *C.char, result **C.char) (int) {
   var ret int

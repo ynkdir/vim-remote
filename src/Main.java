@@ -9,7 +9,11 @@ import com.sun.jna.Callback;
 
 public class Main {
     public interface CLibrary extends Library {
-        public interface vimremote_eval_f extends Callback {
+        public interface vimremote_send_f extends Callback {
+            int invoke(String keys);
+        }
+
+        public interface vimremote_expr_f extends Callback {
             int invoke(String expr, Pointer result);
         }
 
@@ -23,7 +27,7 @@ public class Main {
         int vimremote_serverlist(Pointer[] servernames);
         int vimremote_remotesend(String servername, String keys);
         int vimremote_remoteexpr(String servername, String expr, Pointer[] result);
-        int vimremote_register(String servername, vimremote_eval_f eval);
+        int vimremote_register(String servername, vimremote_send_f send_f, vimremote_expr_f expr_f);
         int vimremote_eventloop(int forever);
     }
 
@@ -55,7 +59,14 @@ public class Main {
     }
 
     public void command_server(String servername) {
-        CLibrary.vimremote_eval_f usereval = new CLibrary.vimremote_eval_f() {
+        CLibrary.vimremote_send_f echosend = new CLibrary.vimremote_send_f() {
+            public int invoke(String keys) {
+                System.out.println(keys);
+                return 0;
+            }
+        };
+
+        CLibrary.vimremote_expr_f echoexpr = new CLibrary.vimremote_expr_f() {
             public int invoke(String expr, Pointer result) {
                 System.out.println(expr);
                 // eval?
@@ -70,7 +81,7 @@ public class Main {
             }
         };
 
-        if (CLibrary.INSTANCE.vimremote_register(servername, usereval) != 0) {
+        if (CLibrary.INSTANCE.vimremote_register(servername, echosend, echoexpr) != 0) {
             throw new RuntimeException("vimremote_register() failed");
         }
         CLibrary.INSTANCE.vimremote_eventloop(1);

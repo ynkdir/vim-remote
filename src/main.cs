@@ -12,7 +12,9 @@ class Application {
   public const string vimremote = "vimremote.dll";
 #endif
 
-  public unsafe delegate int vimremote_eval_f(string expr, byte** result);
+  public unsafe delegate int vimremote_send_f(string keys);
+
+  public unsafe delegate int vimremote_expr_f(string expr, byte** result);
 
   [DllImport(vimremote)]
   public static unsafe extern byte* vimremote_malloc(UIntPtr len);
@@ -36,7 +38,7 @@ class Application {
   public static unsafe extern int vimremote_remoteexpr(string servername, string expr, byte** result);
 
   [DllImport(vimremote)]
-  public static unsafe extern int vimremote_register(string servername, vimremote_eval_f eval);
+  public static unsafe extern int vimremote_register(string servername, vimremote_send_f send_f, vimremote_expr_f expr_f);
 
   [DllImport(vimremote)]
   public static unsafe extern int vimremote_eventloop(int forever);
@@ -90,10 +92,15 @@ class Application {
   }
 
   public unsafe void command_server(string servername) {
-    if (vimremote_register(servername, eval) != 0) {
+    if (vimremote_register(servername, send, eval) != 0) {
       throw new Exception("vimremote_register() failed");
     }
     vimremote_eventloop(1);
+  }
+
+  public unsafe int send(string keys) {
+    System.Console.WriteLine(keys);
+    return 0;
   }
 
   // eval?

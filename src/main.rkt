@@ -9,7 +9,10 @@
 (define vimremote
   (ffi-lib "vimremote"))
 
-(define vimremote-eval-f
+(define vimremote-send-f
+  (_fun _string/utf-8 -> _int))
+
+(define vimremote-expr-f
   (_fun _string/utf-8 _pointer -> _int))
 
 (define vimremote-malloc
@@ -34,7 +37,7 @@
   (get-ffi-obj "vimremote_remoteexpr" vimremote (_fun _string/utf-8 _string/utf-8 _pointer -> _int)))
 
 (define vimremote-register
-  (get-ffi-obj "vimremote_register" vimremote (_fun _string/utf-8 vimremote-eval-f -> _int)))
+  (get-ffi-obj "vimremote_register" vimremote (_fun _string/utf-8 vimremote-send-f vimremote-expr-f -> _int)))
 
 (define vimremote-eventloop
   (get-ffi-obj "vimremote_eventloop" vimremote (_fun _int -> _int)))
@@ -67,6 +70,10 @@
   (vimremote-free (ptr-ref p _pointer))
   )
 
+(define (fsend keys)
+  (display keys)(newline)
+  0)
+
 ;; FIXME: eval?
 (define (feval expr result)
   (define (set-result s)
@@ -89,7 +96,7 @@
       0)))
 
 (define (command-server servername)
-  (unless (equal? (vimremote-register servername feval) 0)
+  (unless (equal? (vimremote-register servername fsend feval) 0)
     (raise "vimremote_register() failed"))
   (let loop ()
     (vimremote-eventloop 0)

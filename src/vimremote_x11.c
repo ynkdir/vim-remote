@@ -54,7 +54,8 @@ static Atom commProperty = None;
 static Atom vimProperty = None;
 static Atom registryProperty = None;
 static int got_x_error = False;
-static vimremote_eval_f usereval = NULL;
+static vimremote_send_f callback_send = NULL;
+static vimremote_expr_f callback_expr = NULL;
 static char_u *serverName = NULL;
 
 static char_u	*empty_prop = (char_u *)"";	/* empty GetRegProp() result */
@@ -136,12 +137,13 @@ vimremote_remoteexpr(const char *servername, const char *expr, char **result)
 }
 
 int
-vimremote_register(const char *servername, vimremote_eval_f eval)
+vimremote_register(const char *servername, vimremote_send_f send_f, vimremote_expr_f expr_f)
 {
     if (DoRegisterName(display, (char_u *)servername) != 0) {
         return -1;
     }
-    usereval = eval;
+    callback_send = send_f;
+    callback_expr = expr_f;
     return 0;
 }
 
@@ -652,7 +654,7 @@ serverEventProc(Display *dpy, XEvent *eventPtr)
 	    Bool	asKeys = *p == 'k';
 	    garray_T	reply;
 	    char_u	*enc;
-            int err;
+	    int err;
 
 	    /*
 	     * This is an incoming command from some other application.
@@ -706,10 +708,6 @@ serverEventProc(Display *dpy, XEvent *eventPtr)
 	    if (script == NULL || name == NULL)
 		continue;
 
-            /* remote_send() is not supported */
-            if (asKeys)
-                continue;
-
 	    /*
 	     * Initialize the result property, so that we're ready at any
 	     * time if we need to return an error.
@@ -722,30 +720,45 @@ serverEventProc(Display *dpy, XEvent *eventPtr)
 						   0, 0, p_enc, 0, serial, 0);
 		reply.ga_len = 14 + STRLEN(p_enc) + STRLEN(serial);
 	    }
-            err = 0;
+	    err = 0;
 	    res = NULL;
 	    if (serverName != NULL && STRICMP(name, serverName) == 0)
 	    {
 		script = serverConvert(enc, script, &tofree);
-                if (usereval == NULL)
-                {
-                    err = -1;
-                    res = NULL;
-                }
-                else
-                {
-                    err = usereval((char *)script, (char **)&res);
-                }
-                vim_free(tofree);
+		if (asKeys)
+		{
+		    if (callback_send == NULL)
+		    {
+			err = -1;
+			res = NULL;
+		    }
+		    else
+		    {
+			err = callback_send((char *)script);
+		    }
+		}
+		else
+		{
+		    if (callback_expr == NULL)
+		    {
+			err = -1;
+			res = NULL;
+		    }
+		    else
+		    {
+			err = callback_expr((char *)script, (char **)&res);
+		    }
+		}
+		vim_free(tofree);
 	    }
 	    if (resWindow != None)
 	    {
-                if (!err)
-                {
+		if (!err)
+		{
 		    ga_concat(&reply, (res == NULL ? (char_u *)"" : res));
-                }
-                else
-                {
+		}
+		else if (asKeys == 0)
+		{
 		    ga_concat(&reply, (res == NULL ? (char_u *)"" : res));
 		    ga_append(&reply, 0);
 		    ga_concat(&reply, (char_u *)"-c 1");
@@ -869,7 +882,7 @@ serverEventProc(Display *dpy, XEvent *eventPtr)
 	    if (!gotWindow)
 		continue;
 
-            /* not supported */
+	    /* not supported */
 	}
 	else
 	{

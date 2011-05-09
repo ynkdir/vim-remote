@@ -4,13 +4,13 @@ License: VIM LICENSE (see :help license)
 
 supported:
   serverlist()
+  remote_send()
   remote_expr()
 
 not supported:
   remote_foreground()
   remote_peek()
   remote_read()
-  remote_send()
   server2client()
 
 
